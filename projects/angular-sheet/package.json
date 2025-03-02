@@ -1,0 +1,43 @@
+{
+  "name": "angular-sheet",
+  "version": "0.1.1",
+  "description": "A high-performance canvas-based spreadsheet component for Angular",
+  "author": "harrydev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/harrywhite87/angular-sheet.git"
+  },
+  "homepage": "https://github.com/harrywhite87/angular-sheet",
+  "bugs": {
+    "url": "https://github.com/harrywhite87/angular-sheet/issues"
+  },
+  "keywords": [
+    "angular",
+    "spreadsheet",
+    "sheet",
+    "grid",
+    "excel",
+    "canvas",
+    "cell",
+    "table",
+    "data-grid",
+    "ngx"
+  ],
+  "peerDependencies": {
+  "@angular/common": "^17.0.0 || ^18.0.0",
+  "@angular/core": "^17.0.0 || ^18.0.0"
+}
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  }
+}

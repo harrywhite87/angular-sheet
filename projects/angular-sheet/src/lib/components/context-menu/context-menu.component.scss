@@ -1,0 +1,19 @@
+:host {
+  font-family: 'Roboto', Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  .context-menu {
+    position: fixed;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    z-index: 9999;
+    min-width: 160px;
+    .context-menu-item {
+      padding: 4px 8px;
+      cursor: pointer;
+
+      &:hover {
+        background-color: #f0f0f0;
+      }
+    }
+  }
+}

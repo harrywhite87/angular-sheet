@@ -1,0 +1,42 @@
+<div
+  #scrollContainer
+  class="scroll-container"
+  (scroll)="onScroll()"
+  (mousemove)="onMouseMove($event)"
+>
+  <canvas
+    #sheetCanvas
+    (mousedown)="onMouseDown($event)"
+    (mouseup)="onMouseUp($event)"
+    (dblclick)="onDblClick($event)"
+    (contextmenu)="onContextMenu($event)"
+  ></canvas>
+  <input
+    #sheetInput
+    id="sheet-input"
+    type="text"
+    [(ngModel)]="stateService.input.value"
+    (input)="onInputChange()"
+    (blur)="onInputBlur()"
+    [ngStyle]="{
+      position: 'absolute',
+      top:
+        stateService.input.top >= 0 && !stateService.input.disabled
+          ? stateService.input.top + 2 + 'px'
+          : '-999px',
+      left: stateService.input.left + 2 + 'px',
+      width: stateService.input.width - 4 + 'px',
+      height: stateService.input.height - 4 + 'px',
+      'line-height': stateService.input.height + 'px',
+      'padding-left': stateService.defaultCellPaddingLeft - 2 + 'px',
+      'font-size': stateService.activeCell?.styles?.fontSize ?? '14px',
+      'font-family': stateService.activeCell?.styles?.fontFamily ?? 'Arial',
+      'pointer-events': stateService.input.disabled ? 'none' : 'auto',
+      'background-color': '#ffffff'
+    }"
+    autocomplete="off"
+  />
+
+  <!-- Context menu -->
+  <context-menu></context-menu>
+</div>

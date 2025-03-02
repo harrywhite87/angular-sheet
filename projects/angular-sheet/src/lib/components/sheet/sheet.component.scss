@@ -1,0 +1,32 @@
+:host {
+  // position: relative;
+  // display: block;
+  * {
+    box-sizing: border-box;
+  }
+
+  .scroll-container {
+    min-width: 100%;
+    min-height: 100%;
+    overflow: auto;
+    position: relative;
+    padding-right: 2rem;
+  }
+
+  canvas {
+    // position: absolute; /* So it can be offset by big dimensions */
+    top: 0;
+    left: 0;
+    /* border: 1px solid black;  (optional) */
+  }
+
+  input {
+    position: absolute;
+    padding: 0;
+    border: transparent;
+    outline: 0;
+    background: transparent;
+    box-sizing: border-box;
+    transform: translate(1px, 1px);
+  }
+}

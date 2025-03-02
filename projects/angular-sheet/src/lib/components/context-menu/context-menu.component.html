@@ -1,0 +1,11 @@
+<div
+  class="context-menu"
+  *ngIf="stateService.contextMenu.visible"
+  [ngStyle]="{
+    top: stateService.contextMenu.position.y + 'px',
+    left: stateService.contextMenu.position.x + 'px'
+  }"
+>
+  <div class="context-menu-item" (click)="onCopyClick()">Copy</div>
+  <div class="context-menu-item" (click)="onPasteClick()">Paste</div>
+</div>
