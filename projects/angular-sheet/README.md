@@ -1,13 +1,10 @@
-# angular-sheet
+# `angular-sheet`
 
 A high-performance canvas-based spreadsheet component for Angular applications, providing Excel-like functionality with a minimal footprint.
 
-[![npm version](https://badge.fury.io/js/%40harrydev%2Fangular-sheet.svg)](https://www.npmjs.com/package/@harrydev/angular-sheet)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-<!-- <p align="center">
-  <img src="https://via.placeholder.com/800x400?text=angular-sheet+Screenshot" alt="angular-sheet Screenshot" />
-</p> -->
+<p align="center">
+  <img src="https://raw.githubusercontent.com/harrywhite87/assets/refs/heads/main/images/angular-sheets/screenshot.webp" alt="angular-sheet Screenshot" />
+</p>
 
 ## Features
 
@@ -19,62 +16,83 @@ A high-performance canvas-based spreadsheet component for Angular applications, 
 - 🌈 **Styling**: Custom cell styling with background colors, fonts, and alignments
 - 👆 **UX Features**: Context menu, drag handle, and resize functionality
 
-## Installation
-
-```bash
-# NPM
-npm install @harrydev/angular-sheet --save
-
-# Yarn
-yarn add @harrydev/angular-sheet
-```
-
 ## Basic Usage
 
-### 1. Import the module in your Angular app
 
-```typescript
-import { SheetComponent } from "@harrydev/angular-sheet";
-
-@NgModule({
-  declarations: [AppComponent],
-  imports: [BrowserModule, SheetComponent],
-  bootstrap: [AppComponent],
-})
-export class AppModule {}
-```
-
-### 2. Use the component in your template
+### 1. Use the component in your template
 
 ```html
 <sheet [sheetData]="mySpreadsheetData" (sheetDataChange)="onSheetDataChange($event)"></sheet>
 ```
 
-### 3. Set up your component class
+### 2. Set up your component class
 
 ```typescript
-import { Component } from "@angular/core";
-import { Sheet, Cell, CellStyles } from "@harrydev/angular-sheet";
+import { Component } from '@angular/core';
+import { SheetComponent, Sheet, Cell, CellStyles } from "angular-sheet";
 
 @Component({
-  selector: "app-root",
-  templateUrl: "./app.component.html",
+  selector: 'app-root',
+  standalone: true,
+  imports: [SheetComponent],
+  templateUrl: './app.component.html',
+  styleUrl: './app.component.scss'
 })
 export class AppComponent {
   mySpreadsheetData: Sheet = {
     cells: [
-      [new Cell("A1", { isReferenceCell: true }), new Cell("B1", { isReferenceCell: true })],
-      [new Cell("A2"), new Cell("B2")],
+      [
+        new Cell("Segment", { isReferenceCell: true }),
+        new Cell("Country", { isReferenceCell: true }),
+        new Cell("Product", { isReferenceCell: true }),
+        new Cell("Discount Band", { isReferenceCell: true }),
+        new Cell("Units Sold", { isReferenceCell: true }),
+      ],
+      [new Cell("Government"), new Cell("Canada"), new Cell("Carretera"), new Cell("None"), new Cell(1618.5)],
+      [new Cell("Government"), new Cell("Germany"), new Cell("Carretera"), new Cell("None"), new Cell(1321)],
+      [new Cell("Midmarket"), new Cell("France"), new Cell("Carretera"), new Cell("None"), new Cell(2178)],
+      [new Cell("Midmarket"), new Cell("Germany"), new Cell("Carretera"), new Cell("None"), new Cell(888)],
+      [new Cell("Midmarket"), new Cell("Mexico"), new Cell("Carretera"), new Cell("None"), new Cell(2470)],
+      [new Cell("Government"), new Cell("Germany"), new Cell("Carretera"), new Cell("None"), new Cell(1513)],
+      [new Cell("Midmarket"), new Cell("Germany"), new Cell("Montana"), new Cell("None"), new Cell(921)],
+      [new Cell("Channel Partners"), new Cell("Canada"), new Cell("Montana"), new Cell("None"), new Cell(2518)],
+      [new Cell("Government"), new Cell("France"), new Cell("Montana"), new Cell("None"), new Cell(1899)],
+      [new Cell("Channel Partners"), new Cell("Germany"), new Cell("Montana"), new Cell("None"), new Cell(1545)],
+      [new Cell("Midmarket"), new Cell("Mexico"), new Cell("Montana"), new Cell("None"), new Cell(2470)],
+      [new Cell("Enterprise"), new Cell("Canada"), new Cell("Montana"), new Cell("None"), new Cell(2665.5)],
+      [new Cell("Small Business"), new Cell("Mexico"), new Cell("Montana"), new Cell("None"), new Cell(958)],
+      [new Cell("Government"), new Cell("Germany"), new Cell("Montana"), new Cell("None"), new Cell(2146)],
+      [new Cell("Enterprise"), new Cell("Canada"), new Cell("Montana"), new Cell("None"), new Cell(345)],
+      [new Cell("Midmarket"), new Cell("United States of America"), new Cell("Montana"), new Cell("None"), new Cell(615)],
+
     ],
     columns: [
+      { width: 100, styles: new CellStyles() },
+      { width: 100, styles: new CellStyles() },
+      { width: 100, styles: new CellStyles() },
       { width: 100, styles: new CellStyles() },
       { width: 100, styles: new CellStyles() },
     ],
     rows: [
       { height: 20, styles: new CellStyles() },
       { height: 20, styles: new CellStyles() },
+      { height: 20, styles: new CellStyles() },
+      { height: 20, styles: new CellStyles() },
+      { height: 20, styles: new CellStyles() },
+      { height: 20, styles: new CellStyles() },
+      { height: 20, styles: new CellStyles() },
+      { height: 20, styles: new CellStyles() },
+      { height: 20, styles: new CellStyles() },
+      { height: 20, styles: new CellStyles() },
+      { height: 20, styles: new CellStyles() },
+      { height: 20, styles: new CellStyles() },
+      { height: 20, styles: new CellStyles() },
+      { height: 20, styles: new CellStyles() },
+      { height: 20, styles: new CellStyles() },
+      { height: 20, styles: new CellStyles() },
     ],
   };
+
 
   onSheetDataChange(updatedData: Sheet) {
     console.log("Sheet data updated:", updatedData);
@@ -88,8 +106,6 @@ export class AppComponent {
 ### Custom Cell Styling
 
 ```typescript
-// Create header styles
-const headerStyles = CellStyles.createHeaderStyles();
 
 // Create a custom cell with specific styling
 const customCell = new Cell("Custom Cell", {
@@ -107,7 +123,7 @@ const customCell = new Cell("Custom Cell", {
 You can create custom cell renderers for advanced visualizations:
 
 ```typescript
-import { createButtonRenderer } from "@harrydev/angular-sheet";
+import { createButtonRenderer } from "angular-sheet";
 
 const actionCell = new Cell("Click Me", {
   customRenderer: createButtonRenderer({

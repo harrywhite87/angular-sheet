@@ -1,14 +1,14 @@
 {
   "name": "angular-sheet",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A high-performance canvas-based spreadsheet component for Angular",
   "author": "harrydev",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/harrywhite87/angular-sheet.git"
+    "url": "https://github.com/harrywhite87/angular-sheet/tree/main/projects/angular-sheet"
   },
-  "homepage": "https://github.com/harrywhite87/angular-sheet",
+  "homepage": "https://harrywhitedeveloper.com/",
   "bugs": {
     "url": "https://github.com/harrywhite87/angular-sheet/issues"
   },
@@ -25,9 +25,8 @@
     "ngx"
   ],
   "peerDependencies": {
-  "@angular/common": "^17.0.0 || ^18.0.0",
-  "@angular/core": "^17.0.0 || ^18.0.0"
-}
+    "@angular/common": "^17.0.0 || ^18.0.0",
+    "@angular/core": "^17.0.0 || ^18.0.0"
   },
   "dependencies": {
     "tslib": "^2.3.0"
