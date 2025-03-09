@@ -9,12 +9,20 @@ export class AnimationService implements OnDestroy {
   private previousShowMarchingAnts = false;
   private lastFrameTime = 0;
 
+  // Function provided by the sheet component to mark dirty state
+  private markDirtyFn: (() => void) | null = null;
+
   // Animation configuration
-  private FPS = 10;           // Frames per second
+  private FPS = 10;           // Frames per second for marching ants
   private frameInterval = 1000 / this.FPS;  // Time between frames in ms
   private dashOffsetIncrement = 1;    // How much to move the dash each frame
 
   constructor(private stateService: StateService) { }
+
+  // Method to set the markDirty function from outside
+  setMarkDirtyFunction(fn: () => void): void {
+    this.markDirtyFn = fn;
+  }
 
   startAnimation(onFrame: () => void): void {
     if (this.animating) return;
@@ -35,14 +43,28 @@ export class AnimationService implements OnDestroy {
         // Update dash offset
         this.dashOffset = (this.dashOffset + this.dashOffsetIncrement);
 
-        // Request redraw
-        onFrame();
+        // Mark as dirty using the provided function
+        if (this.markDirtyFn) {
+          this.markDirtyFn();
+        } else {
+          // Fallback to original onFrame if markDirtyFn is not set
+          onFrame();
+        }
 
         // Update last frame time, accounting for any dropped frames
         this.lastFrameTime = currentTime - (elapsed % this.frameInterval);
       }
 
-      this.previousShowMarchingAnts = currentShowMarchingAnts;
+      // Check if marching ants state changed (turned on or off)
+      if (currentShowMarchingAnts !== this.previousShowMarchingAnts) {
+        if (this.markDirtyFn) {
+          this.markDirtyFn();
+        } else {
+          onFrame();
+        }
+        this.previousShowMarchingAnts = currentShowMarchingAnts;
+      }
+
       this.frameId = requestAnimationFrame(animate);
     };
 

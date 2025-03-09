@@ -32,8 +32,9 @@
   },
   "scripts": {
     "build:lib": "ng build angular-sheet --configuration=production",
+    "watch:lib": "ng build angular-sheet --watch --configuration=production",
     "patch:lib": "cd projects/angular-sheet && npm version patch",
     "publish:lib": "cd dist/angular-sheet && npm publish",
-    "publishPatch": "npm run patch:lib && npm run build:lib &&  npm run publish:lib"
+    "publishPatch": "npm run patch:lib && npm run build:lib && npm run publish:lib"
   }
 }

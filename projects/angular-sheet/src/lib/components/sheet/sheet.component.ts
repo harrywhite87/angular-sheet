@@ -14,7 +14,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Sheet } from '../../models/sheet.model';
+import { Sheet, Debug } from '../../models/sheet.model';
 import { ContextMenuComponent } from '../context-menu/context-menu.component';
 import { Subscription, Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -25,11 +25,13 @@ import { EventService } from '../../services/event.service';
 import { AnimationService } from '../../services/animation.service';
 import { DataService } from '../../services/data.service';
 import { ClipboardService } from '../../services/clipboard.service';
+import { FpsService } from '../../services/fps.service';
+import { FpsCounterComponent } from '../fps-counter/fps-counter.component';
 
 @Component({
   selector: 'sheet',
   standalone: true,
-  imports: [CommonModule, FormsModule, ContextMenuComponent],
+  imports: [CommonModule, FormsModule, ContextMenuComponent, FpsCounterComponent],
   templateUrl: './sheet.component.html',
   styleUrls: ['./sheet.component.scss'],
   providers: [
@@ -39,17 +41,26 @@ import { ClipboardService } from '../../services/clipboard.service';
     AnimationService,
     DataService,
     ClipboardService,
+    FpsService,
   ],
 })
+
 export class SheetComponent implements AfterViewInit, OnChanges, OnDestroy {
   public stateService = inject(StateService);
   private renderService = inject(RenderService);
   private eventService = inject(EventService);
   private animationService = inject(AnimationService);
   private dataService = inject(DataService);
+  private fpsService = inject(FpsService);
 
   @Input() sheetData?: Sheet;
+  @Input() debug: Debug = {
+    showFpsCounter: false
+  };
   @Output() sheetDataChange = new EventEmitter<Sheet>();
+  @Output() fpsUpdate = new EventEmitter<number>();
+
+  public currentFps = 0;
 
   private destroy$ = new Subject<void>();
 
@@ -72,7 +83,7 @@ export class SheetComponent implements AfterViewInit, OnChanges, OnDestroy {
         this.sheetCanvas.nativeElement,
         this.sheetData
       );
-      this.renderService.requestRender();
+      this.renderService.markDirty();
     }
   }
 
@@ -89,7 +100,14 @@ export class SheetComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.sheetCanvas.nativeElement,
       this.sheetData
     );
-    this.renderService.requestRender();
+
+
+    // Set up the markDirty function for the animation service
+    this.animationService.setMarkDirtyFunction(() => {
+      this.renderService.markDirty();
+    });
+
+    this.renderService.markDirty();
 
     this.startAnimation();
 
@@ -98,7 +116,17 @@ export class SheetComponent implements AfterViewInit, OnChanges, OnDestroy {
       .subscribe((sheet) => {
         if (sheet) {
           this.sheetDataChange.emit(sheet);
+          // When data changes, we need to redraw
+          this.renderService.markDirty();
         }
+      });
+
+    // Subscribe to FPS updates
+    this.fpsService.fps$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((fps) => {
+        this.currentFps = fps;
+        this.fpsUpdate.emit(fps);
       });
   }
 
@@ -171,10 +199,7 @@ export class SheetComponent implements AfterViewInit, OnChanges, OnDestroy {
   public onMouseMove(event: MouseEvent): void {
     const sheet = this.dataService.getSheetData();
     if (!sheet) return;
-
     this.eventService.onMouseMove(event, sheet);
-
-    this.renderService.requestRender();
   }
 
   public onInputBlur(): void {

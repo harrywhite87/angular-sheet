@@ -1,9 +1,11 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, EventEmitter } from '@angular/core';
 import { Sheet, Cell, CellRenderer } from '../models/sheet.model';
 import { StateService, HighlightState, MouseMode } from './state.service';
 import { AnimationService } from './animation.service';
 import { DataService } from './data.service';
+import { FpsService } from './fps.service';
 import { getAccumulatedHeight, getAccumulatedWidth } from '../utils/sheet.utils';
+
 interface ButtonHitArea {
   cellId: string;
   x: number;
@@ -18,6 +20,10 @@ export class RenderService {
   private animationService = inject(AnimationService);
   private stateService = inject(StateService);
   private dataService = inject(DataService);
+  private fpsService = inject(FpsService);
+
+  public frameRendered = new EventEmitter<void>();
+
   private canvas?: HTMLCanvasElement;
   private scrollContainer?: HTMLElement;
   private buttonHitAreas: ButtonHitArea[] = [];
@@ -25,13 +31,13 @@ export class RenderService {
   private readonly styleSelectionFill = '#00000020';
   private currentHoverPoint: { x: number; y: number } | null = null;
   private hoveredCellCoords: { row: number; col: number } | null = null;
-  private dragHandleArea: { x: number; y: number; width: number; height: number } | null = null;
 
-  getDragHandleArea() {
-    return this.dragHandleArea;
-  }
-  // A nice translucent color for previews
-  private readonly styleDragFillPreview = 'rgba(30, 144, 255, 0.2)'; // e.g. DodgerBlue, 20% opacity
+  // New properties for throttling and dirty checking
+  private renderPending = false;
+  private isDirty = false;
+  private lastRenderTime = 0;
+  private readonly minRenderInterval = 16; // Cap at around 60fps (~16.7ms)
+  private readonly maxFps = 60; // Max FPS to enforce
 
   setCanvas(canvas: HTMLCanvasElement, scrollContainer: HTMLElement) {
     this.canvas = canvas;
@@ -39,15 +45,80 @@ export class RenderService {
   }
 
   setHoverPoint(point: { x: number; y: number } | null, cellCoords: { row: number; col: number } | null) {
-    this.currentHoverPoint = point;
-    this.hoveredCellCoords = cellCoords;
+    // Skip if both point and cell coords are null
+    if (!point && !cellCoords && !this.currentHoverPoint && !this.hoveredCellCoords) {
+      return;
+    }
+
+    // Check if cell coordinates changed
+    const cellChanged =
+      (this.hoveredCellCoords?.row !== cellCoords?.row ||
+        this.hoveredCellCoords?.col !== cellCoords?.col);
+    // Check if point coordinates changed significantly (add small threshold to avoid minor pixel movements)
+    const threshold = 1; // 1px threshold for considering movement significant
+    const pointChanged =
+      point && this.currentHoverPoint &&
+      (Math.abs(point.x - this.currentHoverPoint.x) > threshold ||
+        Math.abs(point.y - this.currentHoverPoint.y) > threshold);
+
+    // Check for null to non-null transitions or vice versa
+    const nullTransition =
+      (!!point !== !!this.currentHoverPoint) ||
+      (!!cellCoords !== !!this.hoveredCellCoords);
+
+    // Only mark as dirty if we have a real change
+    if (cellChanged || pointChanged || nullTransition) {
+      this.currentHoverPoint = point;
+      this.hoveredCellCoords = cellCoords;
+      this.markDirty();
+    }
+  }
+
+  // New method to mark the sheet as needing redraw
+  markDirty(): void {
+    this.isDirty = true;
     this.requestRender();
   }
+
   requestRender(): void {
-    if (!this.canvas || !this.scrollContainer) return;
+    // If we already have a render queued, don't request another one
+    if (this.renderPending) return;
+
+    // If nothing is dirty and no animations are active, don't render
+    if (!this.isDirty && !this.stateService.showMarchingAnts) {
+      return;
+    }
+
+    const now = performance.now();
+    const timeSinceLastRender = now - this.lastRenderTime;
+
+    // If we rendered recently, delay the next render to enforce the max FPS
+    if (timeSinceLastRender < this.minRenderInterval) {
+      this.renderPending = true;
+      window.requestAnimationFrame(() => {
+        this.renderPending = false;
+        this.performRender();
+      });
+    } else {
+      // Otherwise render immediately
+      this.performRender();
+    }
+  }
+
+  private performRender(): void {
+    // Early returns for impossible render scenarios
+    if (!this.canvas || !this.scrollContainer) {
+      return;
+    }
+
+    // Double check if there's anything to render
+    if (!this.isDirty && !this.stateService.showMarchingAnts) {
+      return;
+    }
 
     const ctx = this.canvas.getContext('2d');
     if (!ctx) return;
+
     this.buttonHitAreas = [];
 
     const clipRegion = {
@@ -57,11 +128,21 @@ export class RenderService {
       bottom: this.scrollContainer.scrollTop + this.scrollContainer.clientHeight
     };
 
-    // Clear the canvas
-    // ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    // Track FPS only when we actually render something
+    this.fpsService.trackFrame();
 
     this.drawSheet(ctx, clipRegion);
+
+    // Reset dirty flag after render
+    this.isDirty = false;
+    this.lastRenderTime = performance.now();
+
+    // Emit that we've rendered a frame
+    this.frameRendered.emit();
   }
+
+  // A nice translucent color for previews
+  private readonly styleDragFillPreview = 'rgba(30, 144, 255, 0.2)'; // e.g. DodgerBlue, 20% opacity
 
   public checkButtonHit(x: number, y: number): (() => void) | undefined {
     // See if (x,y) is inside any of the known button hit areas
@@ -127,8 +208,8 @@ export class RenderService {
     if (!ctx) return;
 
     // Calculate total dimensions based on current column widths & row heights
-    let totalWidth = sheet.columns.reduce((sum, col) => sum + col.width, 0);
-    let totalHeight = sheet.rows.reduce((sum, row) => sum + row.height, 0);
+    const totalWidth = sheet.columns.reduce((sum, col) => sum + col.width, 0);
+    const totalHeight = sheet.rows.reduce((sum, row) => sum + row.height, 0);
 
     // We no longer add extra space for row/column headers, 
     // because they’re just part of the grid now.
@@ -148,7 +229,6 @@ export class RenderService {
       ctx.scale(dpr, dpr);
     }
   }
-
 
   private drawCells(
     ctx: CanvasRenderingContext2D,
@@ -418,12 +498,12 @@ export class RenderService {
       ctx.fill();
 
       // Store handle position for hit testing
-      this.dragHandleArea = {
+      this.stateService.setDragHandleArea({
         x: handleX - handleRadius,
         y: handleY - handleRadius,
         width: handleRadius * 2,
         height: handleRadius * 2
-      };
+      });
     }
   }
 
@@ -460,6 +540,10 @@ export class RenderService {
       bottom: totalHeight
     });
   }
+
+  // initDragHandleArea(sheet: Sheet): void {
+  //   const rowW=
+  // }
 
   public getLastHitArea(x: number, y: number): ButtonHitArea | undefined {
     return this.buttonHitAreas.find(area =>

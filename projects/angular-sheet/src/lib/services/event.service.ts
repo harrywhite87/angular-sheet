@@ -19,6 +19,10 @@ export class EventService {
   private boundaryThreshold = 3;
   private currentCursorStyle = 'default';
 
+  private lastHoverUpdate = 0;
+  private readonly hoverThrottleTime = 16; // ms between hover updates (roughly 60fps)
+
+
   onMouseDown(event: MouseEvent, sheet: Sheet): void {
     this.stateService.updateContextMenuState({ visible: false });
     if (!sheet) return;
@@ -39,7 +43,7 @@ export class EventService {
       // If so, call the button’s handler
       onClick();
       // We can forcibly re-render if needed:
-      this.renderService.requestRender();
+      this.renderService.markDirty();
       return;
     }
 
@@ -96,12 +100,12 @@ export class EventService {
     }
   }
 
+
   public onMouseMove(event: MouseEvent, sheet: Sheet): void {
     if (!sheet) return;
-
-    // Check for drag handle hover first
+    // Drag handle hover (bottom right selection corner)
     if (this.stateService.mouseMode === MouseMode.DEFAULT) {
-      const handleArea = this.renderService.getDragHandleArea();
+      const handleArea = this.stateService.getDragHandleArea();
       if (handleArea) {
         const isHovered =
           event.offsetX >= handleArea.x &&
@@ -116,35 +120,18 @@ export class EventService {
         }
       }
     }
-
-    // Handle drag fill operation
+    // Drag fill preview
     if (this.stateService.mouseMode === MouseMode.DRAG_FILL) {
       const { rowIndex, colIndex } = this.getCellFromOffset(event.offsetX, event.offsetY, sheet);
       if (rowIndex >= 0 && colIndex >= 0) {
         this.stateService.updateDragFillState({
           previewEnd: { row: rowIndex, col: colIndex }
         });
-        this.renderService.requestRender();
+        this.renderService.markDirty();
       }
       return;
     }
-
-    const { rowIndex, colIndex } = this.getCellFromOffset(event.offsetX, event.offsetY, sheet);
-
-    // Update hover state in render service
-    if (rowIndex >= 0 && colIndex >= 0 &&
-      rowIndex < sheet.rows.length && colIndex < sheet.columns.length) {
-      const x = event.offsetX - getAccumulatedWidth(sheet.columns, colIndex);
-      const y = event.offsetY - getAccumulatedHeight(sheet.rows, rowIndex);
-      this.renderService.setHoverPoint(
-        { x: x, y: y },
-        { row: rowIndex, col: colIndex }
-      );
-    } else {
-      this.renderService.setHoverPoint(null, null);
-    }
-
-    // If we're in the middle of resizing, handle that
+    // Resize drag
     if (
       this.stateService.mouseMode === MouseMode.RESIZING_COLUMN ||
       this.stateService.mouseMode === MouseMode.RESIZING_ROW
@@ -152,8 +139,7 @@ export class EventService {
       this.handleResizeDrag(event, sheet);
       return;
     }
-
-    // If we're selecting cells with mouse down, handle that
+    // Cell selection
     if (this.stateService.mouseMode === MouseMode.SELECTING_CELLS && event.buttons === 1) {
       const offsetX = event.offsetX;
       const offsetY = event.offsetY;
@@ -165,9 +151,9 @@ export class EventService {
       this.stateService.updateSelection({
         end: { row: cellPos.rowIndex, col: cellPos.colIndex }
       });
+      this.renderService.markDirty();
       return;
     }
-
     // Check for resize boundaries only if not currently in a drag operation
     if (event.buttons === 0) {
       const colIndex = this.getColumnBoundaryIndex(event, sheet);
@@ -188,7 +174,30 @@ export class EventService {
         document.body.style.cursor = 'default';
       }
     }
+    // Hover while MouseDown
+    if (event.buttons === 1) {
+      const { rowIndex, colIndex } = this.getCellFromOffset(event.offsetX, event.offsetY, sheet);
+      // Throttle hover updates - only update if enough time has passed
+      const now = performance.now();
+      if (now - this.lastHoverUpdate >= this.hoverThrottleTime) {
+        // Update hover state in render service
+        if (rowIndex >= 0 && colIndex >= 0 &&
+          rowIndex < sheet.rows.length && colIndex < sheet.columns.length) {
+          const x = event.offsetX - getAccumulatedWidth(sheet.columns, colIndex);
+          const y = event.offsetY - getAccumulatedHeight(sheet.rows, rowIndex);
+          this.renderService.setHoverPoint(
+            { x: x, y: y },
+            { row: rowIndex, col: colIndex }
+          );
+        } else {
+          this.renderService.setHoverPoint(null, null);
+        }
+        this.lastHoverUpdate = now;
+      }
+    }
+
   }
+
 
   onMouseUp(): void {
     if (this.stateService.mouseMode === MouseMode.DRAG_FILL) {
@@ -210,9 +219,11 @@ export class EventService {
         previewStart: undefined,
         previewEnd: undefined
       });
-      this.renderService.requestRender();
+      this.renderService.markDirty();
       return;
     }
+    this.renderService.markDirty();
+
   }
 
   onKeyDown(event: KeyboardEvent, sheet: Sheet): void {
@@ -257,7 +268,7 @@ export class EventService {
       // this.stateService.updateActiveCell(sheet.cells[0][0]);
 
       // Request a re-render to show the highlight
-      this.renderService.requestRender();
+      this.renderService.markDirty();
       return;
     }
 
@@ -282,7 +293,7 @@ export class EventService {
       }
 
       // Add these two lines:
-      this.renderService.requestRender();
+      this.renderService.markDirty();
       this.dataService.emitSheetChanges(sheet);
 
       return;
@@ -337,17 +348,18 @@ export class EventService {
       // Handle edit mode keys
       this.handleEditModeKeys(event, sheet);
     }
+    this.renderService.markDirty();
   }
 
   // --- [RESIZE LOGIC] ---
   private handleResizeDrag(event: MouseEvent, sheet: Sheet): void {
     const resizeState = this.stateService.getResizeState();
     const mode = this.stateService.mouseMode;
-
     if (
       mode === MouseMode.RESIZING_COLUMN &&
       resizeState.resizingColumnIndex !== undefined
     ) {
+      // Column resizing
       const colIndex = resizeState.resizingColumnIndex;
       const delta = event.clientX - (resizeState.startPointerPos ?? 0);
       const newWidth = (resizeState.originalSize ?? 0) + delta;
@@ -367,6 +379,7 @@ export class EventService {
       mode === MouseMode.RESIZING_ROW &&
       resizeState.resizingRowIndex !== undefined
     ) {
+      // Row resizing
       const rowIndex = resizeState.resizingRowIndex;
       const delta = event.clientY - (resizeState.startPointerPos ?? 0);
       const newHeight = (resizeState.originalSize ?? 0) + delta;
@@ -383,6 +396,7 @@ export class EventService {
         }
       }
     }
+    this.renderService.markDirty();
   }
 
   public getColumnBoundaryIndex(event: MouseEvent, sheet: Sheet): number {
@@ -625,7 +639,8 @@ export class EventService {
     // If the sheet shows column headers, the top header row is from Y=0 to Y=defaultCellHeight.
     // So check event.offsetY <= defaultCellHeight.
     // If rowHeaders exist, we also need to see if event.offsetX is > rowHeaderWidth.
-    const withinTopHeaderY = event.offsetY >= 0 && event.offsetY <= this.stateService.defaultCellHeight;
+    const headerHeight = sheet.rows[0].height;
+    const withinTopHeaderY = event.offsetY >= 0 && event.offsetY <= headerHeight;
     const beyondRowHeaderX = (event.offsetX > this.stateService.defaultCellWidth);
     return withinTopHeaderY && beyondRowHeaderX;
   }

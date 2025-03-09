@@ -48,6 +48,7 @@ export class StateService {
   readonly defaultCellWidth = 50;
   readonly defaultCellPaddingTop = 5;
   readonly defaultCellPaddingLeft = 10;
+  private dragHandleArea: { x: number; y: number; width: number; height: number } | null = null;
 
   // Selection state
   private selectionState = new BehaviorSubject<HighlightState>({
@@ -108,7 +109,6 @@ export class StateService {
   getDragFillState(): DragFillState {
     return this.dragFillState.value;
   }
-
 
   // --- [RESIZE LOGIC ADDED] ---
   // Mouse mode and resizing details
@@ -294,4 +294,11 @@ export class StateService {
     this.inputElement = input;
   }
 
+  getDragHandleArea() {
+    return this.dragHandleArea;
+  }
+
+  setDragHandleArea(area: { x: number; y: number; width: number; height: number }) {
+    this.dragHandleArea = area;
+  }
 }

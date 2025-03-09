@@ -143,3 +143,7 @@ export interface Sheet {
 
 export type Range = { start: { row: number, col: number }, end: { row: number, col: number } };
 
+export interface Debug {
+  showFpsCounter?: boolean;
+}
+

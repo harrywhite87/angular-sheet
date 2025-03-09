@@ -31,7 +31,10 @@ export class ClipboardService {
     for (let row = range.start.row; row <= range.end.row; row++) {
       const rowValues: string[] = [];
       for (let col = range.start.col; col <= range.end.col; col++) {
-        rowValues.push(sheet.cells[row][col].value?.toString() ?? '');
+        // Ensure that the cell value doesn't contain tab characters that would break paste
+        const cellValue = sheet.cells[row][col].value?.toString() ?? '';
+        // Replace any tab characters with spaces to prevent splitting issues
+        rowValues.push(cellValue.replace(/\t/g, ' '));
       }
       copiedData += rowValues.join('\t');
       if (row < range.end.row) {
@@ -68,12 +71,22 @@ export class ClipboardService {
       const text = (await navigator.clipboard.readText());
       if (!text) return;
 
-      // Parse the clipboard data
+      // Parse the clipboard data more carefully
       const lines = text.split('\n');
-      const copiedData = lines.map(line => line.split('\t'));
+
+      // Handle special characters and ensure accurate splitting
+      const copiedData = lines.map(line => {
+        // If we detect that this is CSV data with quotes, handle it specially
+        if (line.includes('"') && line.includes(',')) {
+          return this.parseCSVLine(line);
+        }
+
+        // Otherwise, use the normal tab splitting
+        return line.split('\t');
+      });
 
       const copyHeight = lines.length;
-      const copyWidth = Math.max(...lines.map(line => line.split('\t').length));
+      const copyWidth = Math.max(...copiedData.map(row => row.length));
       const selectionHeight = range.end.row - range.start.row + 1;
       const selectionWidth = range.end.col - range.start.col + 1;
 
@@ -120,5 +133,35 @@ export class ClipboardService {
     } catch (err) {
       console.error('Failed to paste data:', err);
     }
+  }
+
+  /**
+   * Parses a CSV line, handling quoted values properly
+   */
+  private parseCSVLine(line: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+
+      if (char === '"') {
+        // Toggle quote state
+        inQuotes = !inQuotes;
+      } else if (char === '\t' && !inQuotes) {
+        // Tab found outside quotes - end of field
+        result.push(current);
+        current = '';
+      } else {
+        // Add character to current field
+        current += char;
+      }
+    }
+
+    // Add the last field
+    result.push(current);
+
+    return result;
   }
 }

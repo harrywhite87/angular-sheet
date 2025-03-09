@@ -32,11 +32,14 @@
       'font-size': stateService.activeCell?.styles?.fontSize ?? '14px',
       'font-family': stateService.activeCell?.styles?.fontFamily ?? 'Arial',
       'pointer-events': stateService.input.disabled ? 'none' : 'auto',
-      'background-color': '#ffffff'
+      'background-color': '#ffffff',
     }"
     autocomplete="off"
   />
 
   <!-- Context menu -->
   <context-menu></context-menu>
+  @if(debug.showFpsCounter){
+  <fps-counter [fps]="currentFps"></fps-counter>
+  }
 </div>
