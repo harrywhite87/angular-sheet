@@ -333,7 +333,7 @@ export function createImageRenderer(config: ImageConfig) {
             alignY = 'middle',
             borderRadius = 0,
             border = '',
-            backgroundColor = 'transparent',
+            backgroundColor = 'white',
             padding = 4,
             alt = '',
             onClick
